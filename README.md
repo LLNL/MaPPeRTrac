@@ -58,7 +58,6 @@ TracktographyScripts/
 |  +- connectome_idxs.txt       # Brain region indices for .mat connectome files
 |  +- list_edges_reduced.txt    # Default edges to compute with Probtrackx and EDI (930 edges)
 |  +- list_edges_all.txt        # All possible edges (6643 edges)
-|  +- render_targets.txt        # NiFTI files to visualize with s4_render
 |
 +- README.md
 |
@@ -67,13 +66,11 @@ TracktographyScripts/
 +- subscripts/
    +- __init__.py
    +- maskseeds.py              # Helper functions for s2b_freesurfer.py
-   +- run_vtk.py                # Helper script for s4_render.py
    +- s_debug.py                # For debugging
    +- s1_dti_preproc.py
    +- s2a_bedpostx.py
    +- s2b_freesurfer.py
    +- s3_probtrackx.py
-   +- s4_render.py
    +- utilities.py              # General utility functions
 ```
 <br></br>
@@ -106,8 +103,6 @@ The following are the most important output files. This list is not comprehensiv
          |     +- FAtractsumsTwoway.nii.gz                  # NiFTI image of edge density (EDI). See Payabvash et al. (2019) for details.
          |
          +- log/                                            # Directory containing stdout and performance logs
-         |
-         +- render/                                         # Directory containing NiFTI image renders from step s4_render
 ```
 <br></br>
 <br></br>
@@ -123,7 +118,7 @@ The following are the most important output files. This list is not comprehensiv
 
 | Optional Parameter    | Default                           | Description |
 |-----------------------|-----------------------------------|-------------|
-| steps                 | s1 s2a s2b s3 s4                  | Steps to run |
+| steps                 | s1 s2a s2b s3                     | Steps to run |
 | gpu_steps             | s2a                               | Steps to enable CUDA-enabled binaries |
 | scheduler_bank        |                                   | Scheduler bank to charge for jobs. Required for slurm and cobalt. |
 | scheduler_partition   |                                   | Scheduler partition to assign jobs. Required for slurm and cobalt. |
@@ -137,7 +132,6 @@ The following are the most important output files. This list is not comprehensiv
 | gssapi                | False                             | Use Kerberos GSS-API authentication  |
 | local_host_only       | True                              | Request all jobs on local machine, ignoring other hostnames |
 | parsl_path            |                                   | Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin |
-| render_list           | lists/render_targets.txt          | Text file list of NIfTI outputs for s4_render (relative to each subject output directory) |
 | pbtx_sample_count     | 1000                              | Number of streamlines per seed voxel in s3_probtrackx |
 | pbtx_random_seed      | [[random number]]                 | Random seed in s3_probtrackx |
 | pbtx_max_memory       | 0                                 | Maximum memory per node (in GB) for s3_probtrackx. Default value of 0 indicates unlimited memory bound |
@@ -150,32 +144,26 @@ The following are the most important output files. This list is not comprehensiv
 | s2a_job_time          | 00:45:00                          | Max time to finish s2a on 1 subject with 1 node, if dynamic_walltime is true |
 | s2b_job_time          | 10:00:00                          | Max time to finish s2b on 1 subject with 1 node, if dynamic_walltime is true |
 | s3_job_time           | 23:59:00                          | Max time to finish s3 on 1 subject with 1 node, if dynamic_walltime is true |
-| s4_job_time           | 00:15:00                          | Max time to finish s4 on 1 subject with 1 node, if dynamic_walltime is true |
 | s1_cores_per_task     | 1                                 | Number of cores to assign each task for step s1_dti_preproc |
 | s2a_cores_per_task    | [[core count on head node]]       | Number of cores to assign each task for step s2a_bedpostx |
 | s2b_cores_per_task    | [[core count on head node]]       | Number of cores to assign each task for step s2b_freesurfer |
 | s3_cores_per_task     | 1                                 | Number of cores to assign each task for step s3_probtrackx |
-| s4_cores_per_task     | 1                                 | Number of cores to assign each task for step s4_render |
 | s1_hostname           |                                   | Hostname of machine to run step s1_dti_preproc, if local_host_only is false |
 | s2a_hostname          |                                   | Hostname of machine to run step s2a_bedpostx, if local_host_only is false |
 | s2b_hostname          |                                   | Hostname of machine to run step s2b_freesurfer, if local_host_only is false |
 | s3_hostname           |                                   | Hostname of machine to run step s3_probtrackx, if local_host_only is false |
-| s4_hostname           |                                   | Hostname of machine to run step s4_render, if local_host_only is false |
 | s1_walltime           | 23:59:00                          | Walltime for step s1 |
 | s2a_walltime          | 23:59:00                          | Walltime for step s2a |
 | s2b_walltime          | 23:59:00                          | Walltime for step s2b |
 | s3_walltime           | 23:59:00                          | Walltime for step s3 |
-| s4_walltime           | 23:59:00                          | Walltime for step s4 |
 | s1_nodes              | [[floor(0.2 * num_subjects)]]     | Node count for step s1 |
 | s2a_nodes             | [[floor(1.0 * num_subjects)]]     | Node count for step s2a |
 | s2b_nodes             | [[floor(1.0 * num_subjects)]]     | Node count for step s2b |
 | s3_nodes              | [[floor(1.0 * num_subjects)]]     | Node count for step s3 |
-| s4_nodes              | [[floor(0.1 * num_subjects)]]     | Node count for step s4 |
 | s1_cores              | [[core count on head node]]       | Cores per node for step s1 |
 | s2a_cores             | [[core count on head node]]       | Cores per node for step s2a |
 | s2b_cores             | [[core count on head node]]       | Cores per node for step s2b |
 | s3_cores              | [[core count on head node]]       | Cores per node for step s3 |
-| s4_cores              | [[core count on head node]]       | Cores per node for step s4 |
 | bids_json             | examples/dataset_description.json | Description file dataset_description.json, as specified at https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html |
 | bids_readme           |                                   | Free form text file describing the dataset in more detail |
 | bids_session_name     |                                   | Name for the session timepoint (e.g. 2weeks) |

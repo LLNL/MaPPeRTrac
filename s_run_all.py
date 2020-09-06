@@ -19,7 +19,6 @@ from subscripts.s1_dti_preproc import setup_s1
 from subscripts.s2a_bedpostx import setup_s2a
 from subscripts.s2b_freesurfer import setup_s2b
 from subscripts.s3_probtrackx import setup_s3
-from subscripts.s4_render import setup_s4
 
 vCPUs_per_core = 2
 head_node_cores = int(floor(multiprocessing.cpu_count() / vCPUs_per_core)) # We assume 2 vCPUs per core
@@ -74,7 +73,6 @@ else:
     parser.add_argument('--unix_group', help='Unix group to assign file permissions')
     parser.add_argument('--container_path', help='Path to Singularity container image')
     parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
-    parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s4_render (relative to each subject output directory).')
     parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
     parser.add_argument('--force', help='Force re-compute', action='store_true')
     parser.add_argument('--force_params', help='Force re-compute if new parameters do not match previous run', action='store_false')
@@ -94,17 +92,14 @@ else:
     parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_bedpostx')
     parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer')
     parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx')
-    parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_render')
     parser.add_argument('--s1_cores_per_task', help='Number of cores to assign each task for step s1_dti_preproc')
     parser.add_argument('--s2a_cores_per_task', help='Number of cores to assign each task for step s2a_bedpostx')
     parser.add_argument('--s2b_cores_per_task', help='Number of cores to assign each task for step s2b_freesurfer')
     parser.add_argument('--s3_cores_per_task', help='Number of cores to assign each task for step s3_probtrackx')
-    parser.add_argument('--s4_cores_per_task', help='Number of cores to assign each task for step s4_render')
     parser.add_argument('--s1_walltime', help='Walltime for step s1.')
     parser.add_argument('--s2a_walltime', help='Walltime for step s2a.')
     parser.add_argument('--s2b_walltime', help='Walltime for step s2b.')
     parser.add_argument('--s3_walltime', help='Walltime for step s3.')
-    parser.add_argument('--s4_walltime', help='Walltime for step s4.')
 
     # Dynamic walltime (disabled by default)
     parser.add_argument('--dynamic_walltime', help='Request dynamically shortened walltimes, to gain priority on job queue', action='store_true')
@@ -112,19 +107,16 @@ else:
     parser.add_argument('--s2a_job_time', help='If using dynamic walltime, duration of s2a on a single subject with a single node')
     parser.add_argument('--s2b_job_time', help='If using dynamic walltime, duration of s2b on a single subject with a single node')
     parser.add_argument('--s3_job_time', help='If using dynamic walltime, duration of s3 on a single subject with a single node')
-    parser.add_argument('--s4_job_time', help='If using dynamic walltime, duration of s4 on a single subject with a single node')
 
     # Override auto-generated machine settings
     parser.add_argument('--s1_nodes', help='Override recommended node count for step s1.')
     parser.add_argument('--s2a_nodes', help='Override recommended node count for step s2a.')
     parser.add_argument('--s2b_nodes', help='Override recommended node count for step s2b.')
     parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
-    parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
     parser.add_argument('--s1_cores', help='Override core count for node running step s1.')
     parser.add_argument('--s2a_cores', help='Override core count for node running step s2a.')
     parser.add_argument('--s2b_cores', help='Override core count for node running step s2b.')
     parser.add_argument('--s3_cores', help='Override core count for node running step s3.')
-    parser.add_argument('--s4_cores', help='Override core count for node running step s4.')
 
     # BIDS specification settings
     parser.add_argument('--bids_json', help='Description file dataset_description.json, as specified at https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html')
@@ -138,7 +130,7 @@ else:
 ############################
 
 pending_args = args.__dict__.copy()
-parse_default('steps', "s1 s2a s2b s3 s4", args, pending_args)
+parse_default('steps', "s1 s2a s2b s3", args, pending_args)
 parse_default('gpu_steps', "s2a", args, pending_args)
 parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args, pending_args)
 parse_default('scheduler_name', "slurm", args, pending_args)
@@ -156,7 +148,6 @@ parse_default('gssapi', False, args, pending_args)
 parse_default('local_host_only', True, args, pending_args)
 parse_default('compress_pbtx_results', True, args, pending_args)
 parse_default('parsl_path', None, args, pending_args)
-parse_default('render_list', "lists/render_targets.txt", args, pending_args)
 parse_default('pbtx_sample_count', 200, args, pending_args)
 parse_default('pbtx_random_seed', None, args, pending_args)
 parse_default('pbtx_edge_chunk_size', 16, args, pending_args)
@@ -169,23 +160,20 @@ parse_default('s1_cores_per_task', 1, args, pending_args)
 parse_default('s2a_cores_per_task', head_node_cores, args, pending_args)
 parse_default('s2b_cores_per_task', head_node_cores, args, pending_args)
 parse_default('s3_cores_per_task', 1, args, pending_args)
-parse_default('s4_cores_per_task', 1, args, pending_args)
 parse_default('s1_walltime', "23:59:00", args, pending_args)
 parse_default('s2a_walltime', "23:59:00", args, pending_args)
 parse_default('s2b_walltime', "23:59:00", args, pending_args)
 parse_default('s3_walltime', "23:59:00", args, pending_args)
-parse_default('s4_walltime', "23:59:00", args, pending_args)
 parse_default('dynamic_walltime', False, args, pending_args)
 parse_default('s1_job_time', "00:15:00", args, pending_args)
 parse_default('s2a_job_time', "00:45:00", args, pending_args)
 parse_default('s2b_job_time', "10:00:00", args, pending_args)
 parse_default('s3_job_time', "23:59:00", args, pending_args)
-parse_default('s4_job_time', "00:45:00", args, pending_args)
 parse_default('bids_json', "examples/dataset_description.json", args, pending_args)
 parse_default('bids_readme', "", args, pending_args)
 parse_default('bids_session_name', "", args, pending_args)
 
-for step in ['s1','s2a','s2b','s3','s4']:
+for step in ['s1','s2a','s2b','s3']:
     parse_default(step + '_hostname', None, args, pending_args)
     parse_default(step + '_nodes', None, args, pending_args)
     parse_default(step + '_cores', None, args, pending_args)
@@ -209,7 +197,7 @@ if isinstance(args.steps, str):
     steps = [x.strip() for x in args.steps.split(' ') if x]
 if isinstance(args.gpu_steps, str):
     gpu_steps = [x.strip() for x in args.gpu_steps.split(' ') if x]
-valid_steps = ['debug','s1','s2a','s2b','s3','s4']
+valid_steps = ['debug','s1','s2a','s2b','s3']
 steps = [x for x in steps if x in valid_steps]
 gpu_steps = [x for x in gpu_steps if x in valid_steps]
 if len(steps) != len(set(steps)):
@@ -224,7 +212,6 @@ step_setup_functions = {
     's2a': setup_s2a,
     's2b': setup_s2b,
     's3': setup_s3,
-    's4': setup_s4,
 }
 prereqs = {
     'debug': [],
@@ -232,7 +219,6 @@ prereqs = {
     's2a': ['s1'],
     's2b': ['s1'],
     's3': ['s1','s2a','s2b'],
-    's4': ['s1','s2a','s2b','s3'],
 }
 # Print warning if prerequisite steps are not running
 for step in steps:
@@ -263,7 +249,6 @@ if not exists(global_timing_log):
 # if islink(join(derivatives_dir,"fsaverage")):
     # run("unlink {}".format(join(derivatives_dir,"fsaverage")))
 pbtx_edge_list = abspath(args.pbtx_edge_list)
-render_list = abspath(args.render_list)
 connectome_idx_list = abspath(args.connectome_idx_list)
 smart_copy(args.bids_json, join(rawdata_dir, "dataset_description.json"))
 if args.bids_readme:
@@ -372,7 +357,6 @@ for sname in json_data:
             'global_timing_log': global_timing_log,
             'use_gpu': step in gpu_steps,
             'step': step,
-            'render_list': render_list,
             'connectome_idx_list': connectome_idx_list,
             'pbtx_sample_count': int(args.pbtx_sample_count),
             'pbtx_random_seed': args.pbtx_random_seed,
@@ -421,7 +405,6 @@ num_subjects = {
     's2a': 0,
     's2b': 0,
     's3': 0,
-    's4': 0,
 }
 for sname in subject_dict:
     for step in subject_dict[sname]:
@@ -451,14 +434,12 @@ node_counts = {
     's2a': min(max(floor(1.0 * num_subjects['s2a']), 1), 24) if args.s2a_nodes is None else int(args.s2a_nodes),
     's2b': min(max(floor(1.0 * num_subjects['s2b']), 1), 24) if args.s2b_nodes is None else int(args.s2b_nodes),
     's3': min(max(floor(1.0 * num_subjects['s3']), 1), 24) if args.s3_nodes is None else int(args.s3_nodes),
-    's4': min(max(floor(0.1 * num_subjects['s4']), 1), 8) if args.s4_nodes is None else int(args.s4_nodes),
 }
 job_times = {
     's1': args.s1_job_time,
     's2a': args.s2a_job_time,
     's2b': args.s2b_job_time,
     's3': args.s3_job_time,
-    's4': args.s4_job_time,
 }
 walltimes = {
     'debug': "00:05:00",
@@ -466,7 +447,6 @@ walltimes = {
     's2a': get_walltime(num_subjects['s2a'], job_times['s2a'], node_counts['s2a']) if args.dynamic_walltime else args.s2a_walltime,
     's2b': get_walltime(num_subjects['s2b'], job_times['s2b'], node_counts['s2b']) if args.dynamic_walltime else args.s2b_walltime,
     's3': get_walltime(num_subjects['s3'], job_times['s3'], node_counts['s3']) if args.dynamic_walltime else args.s3_walltime,
-    's4': get_walltime(num_subjects['s4'], job_times['s4'], node_counts['s4']) if args.dynamic_walltime else args.s4_walltime,
 }
 hostnames = {
     'debug': args.s1_hostname,
@@ -474,7 +454,6 @@ hostnames = {
     's2a': args.s2a_hostname,
     's2b': args.s2b_hostname,
     's3': args.s3_hostname,
-    's4': args.s4_hostname,
 }
 cores_per_node = {
     'debug': head_node_cores,
@@ -482,7 +461,6 @@ cores_per_node = {
     's2a': head_node_cores if args.s2a_cores is None else int(args.s2a_cores),
     's2b': head_node_cores if args.s2b_cores is None else int(args.s2b_cores),
     's3': head_node_cores if args.s3_cores is None else int(args.s3_cores),
-    's4': head_node_cores if args.s4_cores is None else int(args.s4_cores),
 }
 cores_per_task = {
     'debug': 1,
@@ -490,7 +468,6 @@ cores_per_task = {
     's2a': args.s2a_cores_per_task,
     's2b': args.s2b_cores_per_task,
     's3': args.s3_cores_per_task, # setting this too low can lead to probtrackx exceeding local memory and crashing
-    's4': args.s4_cores_per_task,
 }
 
 ############################
