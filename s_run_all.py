@@ -4,6 +4,7 @@ from parsl.app.app import python_app,bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
 from parsl.executors import HighThroughputExecutor
+from parsl.executors.threads import ThreadPoolExecutor
 from parsl.launchers import MpiRunLauncher,SingleNodeLauncher,SimpleLauncher,SrunLauncher
 from parsl.addresses import address_by_hostname,address_by_route
 from parsl.providers import LocalProvider,SlurmProvider,CobaltProvider,GridEngineProvider
@@ -64,7 +65,7 @@ usage: %(prog)s [config_json]
     subjects_group.add_argument('--subject', help='Name of single subject.')
     subjects_group.add_argument('--subjects_json', help='JSON file with input directories for each subject.')
     parser.add_argument('--output_dir', help='The directory that will contain a BIDS-compliant dataset with all subjects.', required=True)
-    parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Value is "slurm" for LLNL, "cobalt" for ANL, and "grid_engine" for UCSF.', required=True, choices=['slurm', 'cobalt', 'grid_engine'])
+    parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Value is "slurm" for LLNL, "cobalt" for ANL, and "grid_engine" for UCSF.', required=True, choices=['slurm', 'cobalt', 'grid_engine', 'local'])
     
     # Required for Slurm and Cobalt
     parser.add_argument('--scheduler_partition', help='Scheduler partition to assign jobs. Required for slurm and cobalt.')
@@ -610,8 +611,14 @@ for step in steps:
                     ),
                 )
             )
+    elif args.scheduler_name == 'local':
+        executors.append(ThreadPoolExecutor(
+                    label=step,
+                    max_threads=head_node_cores
+                )
+            )
     else:
-        raise Exception('Invalid scheduler_name {}. Valid schedulers are slurm, grid_engine, and cobalt.'.format(args.scheduler_name))
+        raise Exception('Invalid scheduler_name {}. Valid schedulers are slurm, grid_engine, cobalt, and local.'.format(args.scheduler_name))
 print("===================================================\n")
 
 config = Config(executors=executors)
